@@ -23,9 +23,19 @@ public class RepairTarget2D : MonoBehaviour
         if (repairProgress >= repairGoal)
         {
             isDamaged = false;
+            repairProgress = repairGoal;
             UpdateColor();
             Debug.Log(name + " is now FIXED!");
         }
+    }
+
+    public void Damage()
+    {
+        // Drone uses this to "destroy" / break the machine again
+        isDamaged = true;
+        repairProgress = 0f;
+        UpdateColor();
+        Debug.Log(name + " was DAMAGED by a drone!");
     }
 
     void UpdateColor()

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class RobotAI2D : MonoBehaviour
@@ -25,7 +25,7 @@ public class RobotAI2D : MonoBehaviour
     public float wanderRadius = 3f;
 
     [Header("Repair")]
-    public float repairTime = 2.5f;
+    public float repairTime = 2.5f;   // fallback if no RepairTarget2D component exists
 
     private Rigidbody2D rb;
     private Transform target;
@@ -35,16 +35,19 @@ public class RobotAI2D : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        rb.gravityScale = 0f;
+        rb.gravityScale = 0f; // top-down 2D
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
         ChooseNewWanderTarget();
     }
 
     void Update()
     {
-        // Light-based state: if dim, go Confused
+        // If lights are dim → robots get confused
         if (environment != null && environment.lightLevel < 0.4f)
+        {
             currentState = State.Confused;
+        }
 
         switch (currentState)
         {
@@ -67,10 +70,14 @@ public class RobotAI2D : MonoBehaviour
         }
     }
 
+    // ------------------------------
+    //  TARGET SEARCH
+    // ------------------------------
     void LookForTarget()
     {
         GameObject[] candidates = GameObject.FindGameObjectsWithTag("RepairTarget");
-        if (candidates.Length == 0) return;
+        if (candidates.Length == 0)
+            return;
 
         GameObject nearest = null;
         float bestDist = Mathf.Infinity;
@@ -78,8 +85,10 @@ public class RobotAI2D : MonoBehaviour
         foreach (GameObject go in candidates)
         {
             RepairTarget2D rt = go.GetComponent<RepairTarget2D>();
+
+            // Skip machines that are already fixed
             if (rt != null && !rt.isDamaged)
-                continue; // ignore fixed machines
+                continue;
 
             float d = Vector2.Distance(transform.position, go.transform.position);
             if (d < bestDist && d <= detectRange)
@@ -96,6 +105,9 @@ public class RobotAI2D : MonoBehaviour
         }
     }
 
+    // ------------------------------
+    //  MOVE TOWARD TARGET
+    // ------------------------------
     void MoveToTarget()
     {
         if (target == null)
@@ -118,6 +130,9 @@ public class RobotAI2D : MonoBehaviour
         }
     }
 
+    // ------------------------------
+    //  REPAIR
+    // ------------------------------
     void DoRepair()
     {
         if (target == null)
@@ -127,8 +142,10 @@ public class RobotAI2D : MonoBehaviour
         }
 
         RepairTarget2D rt = target.GetComponent<RepairTarget2D>();
+
         if (rt != null)
         {
+            // Repair at ~40 units per second
             rt.RepairTick(40f * Time.deltaTime);
 
             if (!rt.isDamaged)
@@ -140,8 +157,9 @@ public class RobotAI2D : MonoBehaviour
         }
         else
         {
-            // Fallback: timer-based repair
+            // Fallback timer repair
             repairTimer += Time.deltaTime;
+
             if (repairTimer >= repairTime)
             {
                 Debug.Log(name + " finished repairing " + target.name);
@@ -151,15 +169,22 @@ public class RobotAI2D : MonoBehaviour
         }
     }
 
+    // ------------------------------
+    //  CONFUSED WANDERING
+    // ------------------------------
     void Wander()
     {
         Vector2 pos = rb.position;
         Vector2 dir = (wanderTarget - pos).normalized;
+
         rb.MovePosition(pos + dir * moveSpeed * 0.7f * Time.deltaTime);
 
         if (Vector2.Distance(pos, wanderTarget) < 0.5f)
+        {
             ChooseNewWanderTarget();
+        }
 
+        // If lights return to normal → resume work
         if (environment != null && environment.lightLevel >= 0.4f)
         {
             currentState = State.Idle;
@@ -173,6 +198,9 @@ public class RobotAI2D : MonoBehaviour
         wanderTarget = center + Random.insideUnitCircle * wanderRadius;
     }
 
+    // ------------------------------
+    //  VISUALIZE DETECTION RANGE
+    // ------------------------------
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.cyan;
