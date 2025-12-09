@@ -2,7 +2,8 @@ using UnityEngine;
 
 public class RepairTarget2D : MonoBehaviour
 {
-    public bool isDamaged = true;
+    [Header("Repair State")]
+    public bool isDamaged = true;        // robots should work on damaged machines
     public float repairProgress = 0f;
     public float repairGoal = 100f;
 
@@ -14,37 +15,61 @@ public class RepairTarget2D : MonoBehaviour
         UpdateColor();
     }
 
+    // Called by robots every frame while repairing
     public void RepairTick(float amount)
     {
-        if (!isDamaged) return;
+        if (!isDamaged)
+            return;
 
         repairProgress += amount;
 
         if (repairProgress >= repairGoal)
         {
-            isDamaged = false;
             repairProgress = repairGoal;
+            isDamaged = false;
             UpdateColor();
             Debug.Log(name + " is now FIXED!");
+
+            // :small_blue_diamond: Tell the game manager this machine was repaired
+            if (FactoryGameManager.Instance != null)
+            {
+                FactoryGameManager.Instance.RegisterRepair(this);
+            }
         }
     }
 
+    // Called by drones when they attack a fixed machine
     public void Damage()
     {
-        // Drone uses this to "destroy" / break the machine again
-        isDamaged = true;
-        repairProgress = 0f;
-        UpdateColor();
-        Debug.Log(name + " was DAMAGED by a drone!");
+        // Only do something if it was actually fixed
+        if (!isDamaged)
+        {
+            isDamaged = true;
+            repairProgress = 0f;
+            UpdateColor();
+            Debug.Log(name + " was DAMAGED by a drone!");
+        }
     }
 
     void UpdateColor()
     {
+        if (sr == null)
+            sr = GetComponent<SpriteRenderer>();
+
         if (sr == null) return;
 
         // Yellow = damaged, Green = fixed
         sr.color = isDamaged
-            ? new Color(1f, 0.85f, 0.3f)
-            : new Color(0.4f, 1f, 0.4f);
+            ? new Color(1f, 0.85f, 0.3f)   // damaged
+            : new Color(0.4f, 1f, 0.4f);   // fixed
     }
+
+#if UNITY_EDITOR
+    void OnValidate()
+    {
+        if (Application.isPlaying) return;
+        sr = GetComponent<SpriteRenderer>();
+        UpdateColor();
+    }
+#endif
 }

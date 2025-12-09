@@ -2,8 +2,10 @@ using UnityEngine;
 
 public class MachineSpawner : MonoBehaviour
 {
-    [Header("Spawn Settings")]
+    [Header("Prefab")]
     public GameObject repairTargetPrefab;
+
+    [Header("Spawn Settings")]
     public int machineCount = 5;
 
     [Header("Spawn Bounds (inside walls)")]
@@ -29,17 +31,18 @@ public class MachineSpawner : MonoBehaviour
     void SpawnMachines()
     {
         int spawned = 0;
-        int safety = 0; // avoid infinite loops
+        int safety = 0; // safety guard to avoid infinite loops
 
         while (spawned < machineCount && safety < machineCount * 20)
         {
             safety++;
 
+            // Pick a random position inside the bounds
             float x = Random.Range(minX, maxX);
             float y = Random.Range(minY, maxY);
             Vector2 spawnPos = new Vector2(x, y);
 
-            // Check spacing from other machines
+            // Check for overlap with existing machines
             Collider2D[] hits = Physics2D.OverlapCircleAll(spawnPos, minDistanceBetweenMachines);
             bool tooClose = false;
 
@@ -55,12 +58,24 @@ public class MachineSpawner : MonoBehaviour
             if (tooClose)
                 continue;
 
-            // Actually spawn
-            GameObject newMachine = Instantiate(repairTargetPrefab, spawnPos, Quaternion.identity);
-            newMachine.tag = "RepairTarget"; // ensure tag is set
+            // Actually spawn the machine
+            GameObject obj = Instantiate(repairTargetPrefab, spawnPos, Quaternion.identity);
+
+            // Make sure it has the right tag
+            obj.tag = "RepairTarget";
+
             spawned++;
         }
 
-        Debug.Log("Spawned " + spawned + " machines.");
+        Debug.Log($"MachineSpawner: spawned {spawned} machines.");
+    }
+
+    void OnDrawGizmos()
+    {
+        // visualize spawn region in Scene view
+        Gizmos.color = Color.red;
+        Vector3 center = new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, 0f);
+        Vector3 size   = new Vector3(maxX - minX, maxY - minY, 0f);
+        Gizmos.DrawWireCube(center, size);
     }
 }

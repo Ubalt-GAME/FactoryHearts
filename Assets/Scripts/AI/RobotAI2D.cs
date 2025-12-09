@@ -25,7 +25,7 @@ public class RobotAI2D : MonoBehaviour
     public float wanderRadius = 3f;
 
     [Header("Repair")]
-    public float repairTime = 2.5f;   // fallback if no RepairTarget2D component exists
+    public float repairTime = 2.5f;   // fallback if no RepairTarget2D exists
 
     private Rigidbody2D rb;
     private Transform target;
@@ -35,7 +35,7 @@ public class RobotAI2D : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        rb.gravityScale = 0f; // top-down 2D
+        rb.gravityScale = 0f;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
         ChooseNewWanderTarget();
@@ -43,7 +43,7 @@ public class RobotAI2D : MonoBehaviour
 
     void Update()
     {
-        // If lights are dim → robots get confused
+        // Global reaction to low light: robots get confused
         if (environment != null && environment.lightLevel < 0.4f)
         {
             currentState = State.Confused;
@@ -148,6 +148,7 @@ public class RobotAI2D : MonoBehaviour
             // Repair at ~40 units per second
             rt.RepairTick(40f * Time.deltaTime);
 
+            // Once fixed, go back to Idle and clear target
             if (!rt.isDamaged)
             {
                 currentState = State.Idle;
@@ -157,7 +158,7 @@ public class RobotAI2D : MonoBehaviour
         }
         else
         {
-            // Fallback timer repair
+            // Fallback timer-based repair if no RepairTarget2D is attached
             repairTimer += Time.deltaTime;
 
             if (repairTimer >= repairTime)

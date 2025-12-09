@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class DroneAI2D : MonoBehaviour
@@ -19,13 +19,13 @@ public class DroneAI2D : MonoBehaviour
     [Header("Patrol")]
     public float patrolRadius = 5f;
 
+    public DroneState currentState = DroneState.Patrolling;
+
     private Rigidbody2D rb;
     private Vector2 patrolCenter;
     private Vector2 patrolTarget;
     private Transform targetMachine;
     private float retargetTimer;
-
-    public DroneState currentState = DroneState.Patrolling;
 
     void Start()
     {
@@ -62,6 +62,9 @@ public class DroneAI2D : MonoBehaviour
         }
     }
 
+    // ------------------------------
+    //  PATROL
+    // ------------------------------
     void Patrol()
     {
         Vector2 pos = rb.position;
@@ -79,19 +82,25 @@ public class DroneAI2D : MonoBehaviour
         patrolTarget = patrolCenter + Random.insideUnitCircle * patrolRadius;
     }
 
+    // ------------------------------
+    //  TARGETING MACHINES
+    // ------------------------------
     void FindMachineToAttack()
     {
         GameObject[] machines = GameObject.FindGameObjectsWithTag("RepairTarget");
         Transform best = null;
         float bestDist = Mathf.Infinity;
 
-        foreach (var go in machines)
+        foreach (GameObject go in machines)
         {
             var rt = go.GetComponent<RepairTarget2D>();
-            if (rt == null) continue;
+            if (rt == null)
+                continue;
 
-            // Drone prefers machines that are fixed (so it can ruin progress)
-            if (rt.isDamaged) continue; // skip already broken ones
+            // Drone prefers machines that are currently FIXED,
+            // so it can break them again.
+            if (rt.isDamaged)     // already damaged → robots will handle it
+                continue;
 
             float d = Vector2.Distance(transform.position, go.transform.position);
             if (d < bestDist && d <= detectRange)
@@ -108,6 +117,9 @@ public class DroneAI2D : MonoBehaviour
         }
     }
 
+    // ------------------------------
+    //  CHASING
+    // ------------------------------
     void ChaseMachine()
     {
         if (targetMachine == null)
@@ -128,6 +140,9 @@ public class DroneAI2D : MonoBehaviour
         }
     }
 
+    // ------------------------------
+    //  ATTACK
+    // ------------------------------
     void AttackMachine()
     {
         if (targetMachine == null)
@@ -139,12 +154,22 @@ public class DroneAI2D : MonoBehaviour
         var rt = targetMachine.GetComponent<RepairTarget2D>();
         if (rt != null)
         {
-            rt.Damage(); // instantly re-damage it
+            // Instantly re-damage the machine (or you could call this repeatedly over time)
+            rt.Damage();
         }
 
-        // After an attack, go back to patrolling and look for another
+        // After attack, forget this machine and resume patrol
         targetMachine = null;
         currentState = DroneState.Patrolling;
         ChooseNewPatrolPoint();
+    }
+
+    // ------------------------------
+    //  VISUALIZE DETECTION RANGE
+    // ------------------------------
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, detectRange);
     }
 }
